@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MaktabHub — Boshlang'ich ta'lim ustozlari uchun</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --paper:#FBF8F1;
+    --rule:#CFDCEE;
+    --ink:#20293F;
+    --ink-soft:#5B6478;
+    --margin:#C23B3B;
+    --gold:#C8932E;
+    --gold-soft:#F3E3C2;
+    --blue:#2A4373;
+    --blue-soft:#E7ECF6;
+    --green:#2F6B4F;
+    --green-soft:#E1EFE7;
+    --card:#FFFFFF;
+    --danger:#B23A3A;
+    --radius:14px;
+    --shadow:0 6px 20px rgba(32,41,63,0.08);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Manrope',sans-serif;
+    color:var(--ink);
+    background:
+      repeating-linear-gradient(to bottom, transparent 0 27px, var(--rule) 27px 28px),
+      var(--paper);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--gold-soft);}
+  a{color:inherit;}
+  button{font-family:inherit;cursor:pointer;}
+  :focus-visible{outline:3px solid var(--gold);outline-offset:2px;}
+  @media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important;}}
+
+  .hand{font-family:'Caveat',cursive;}
+  .app-shell{max-width:1080px;margin:0 auto;padding:20px 20px 60px;}
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 22px;background:var(--card);border-radius:var(--radius);
+    box-shadow:var(--shadow);margin-bottom:26px;
+    border-left:6px solid var(--margin);
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand .mark{
+    width:38px;height:38px;border-radius:10px;background:var(--blue);
+    color:#fff;display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:16px;flex:none;
+  }
+  .brand .name{font-weight:800;font-size:19px;letter-spacing:.2px;}
+  .brand .name span{color:var(--margin);}
+  .topbar-right{display:flex;align-items:center;gap:10px;}
+  .userchip{font-size:14px;color:var(--ink-soft);}
+  .userchip b{color:var(--ink);}
+
+  /* ---------- buttons ---------- */
+  .btn{
+    border:none;border-radius:10px;padding:10px 16px;font-weight:700;font-size:14px;
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--blue);color:#fff;}
+  .btn-primary:hover{box-shadow:0 4px 12px rgba(42,67,115,.35);}
+  .btn-gold{background:var(--gold);color:#fff;}
+  .btn-gold:hover{box-shadow:0 4px 12px rgba(200,147,46,.35);}
+  .btn-ghost{background:transparent;color:var(--ink-soft);border:1.5px solid #DADFE8;}
+  .btn-ghost:hover{border-color:var(--blue);color:var(--blue);}
+  .btn-danger{background:#fff;color:var(--danger);border:1.5px solid var(--danger);}
+  .btn-danger:hover{background:var(--danger);color:#fff;}
+  .btn-sm{padding:6px 12px;font-size:13px;border-radius:8px;}
+  .btn[disabled]{opacity:.5;cursor:not-allowed;}
+
+  /* ---------- login screen ---------- */
+  .login-wrap{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .login-card{
+    background:var(--card);border-radius:20px;box-shadow:var(--shadow);
+    width:100%;max-width:400px;padding:38px 32px 32px;position:relative;
+    border-left:8px solid var(--margin);
+  }
+  .login-card .mark{
+    width:56px;height:56px;border-radius:14px;background:var(--blue);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;
+    margin-bottom:16px;
+  }
+  .login-card h1{font-size:26px;margin:0 0 4px;font-weight:800;}
+  .login-card p.sub{color:var(--ink-soft);margin:0 0 26px;font-size:14.5px;line-height:1.5;}
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:13px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;}
+  .field input{
+    width:100%;padding:12px 14px;border:1.5px solid #DADFE8;border-radius:10px;
+    font-size:15px;font-family:inherit;background:#fff;color:var(--ink);
+    letter-spacing:1px;
+  }
+  .field input:focus{border-color:var(--blue);}
+  .login-card .btn{width:100%;padding:13px;font-size:15px;}
+  .error-msg{
+    background:#FBEAEA;color:var(--danger);border-radius:8px;padding:10px 12px;
+    font-size:13.5px;margin-bottom:16px;font-weight:600;
+  }
+  .login-note{margin-top:20px;font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
+
+  /* ---------- hero ---------- */
+  .hero{margin-bottom:30px;}
+  .hero .eyebrow{
+    font-family:'Caveat',cursive;font-size:22px;color:var(--margin);font-weight:700;
+    display:block;margin-bottom:2px;
+  }
+  .hero h2{font-size:30px;margin:0 0 6px;font-weight:800;}
+  .hero p{color:var(--ink-soft);margin:0;font-size:15px;}
+
+  /* ---------- category tabs (binder tabs) ---------- */
+  .tabs{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap;}
+  .tab{
+    background:#fff;border:none;padding:14px 20px 12px;
+    border-radius:12px 12px 4px 4px;
+    box-shadow:0 2px 6px rgba(32,41,63,0.08);
+    font-weight:700;font-size:14.5px;color:var(--ink-soft);
+    display:flex;align-items:center;gap:8px;
+    border-bottom:4px solid transparent;
+    transition:border-color .15s ease, color .15s ease, transform .1s ease;
+  }
+  .tab:hover{transform:translateY(-2px);}
+  .tab .ic{font-size:18px;}
+  .tab.active{color:var(--ink);border-bottom-color:var(--gold);}
+  .tab .cnt{
+    background:var(--blue-soft);color:var(--blue);font-size:11.5px;font-weight:800;
+    padding:2px 7px;border-radius:20px;
+  }
+
+  /* ---------- section grid / cards ---------- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;}
+  .card{
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:20px;position:relative;display:flex;flex-direction:column;gap:10px;
+    border-top:4px solid var(--blue-soft);
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .card.clickable{cursor:pointer;}
+  .card.clickable:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(32,41,63,0.12);}
+  .card .ic{font-size:28px;}
+  .card h3{margin:0;font-size:17px;font-weight:800;}
+  .card p{margin:0;color:var(--ink-soft);font-size:13.5px;line-height:1.5;flex:1;}
+  .card .foot{display:flex;align-items:center;justify-content:space-between;margin-top:4px;}
+  .pill{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;}
+  .pill-soon{background:#F1EDE2;color:var(--ink-soft);}
+  .pill-link{background:var(--green-soft);color:var(--green);}
+  .pill-test{background:var(--gold-soft);color:var(--gold);}
+
+  /* stamp — the signature element: teacher's grading stamp */
+  .stamp{
+    position:absolute;top:14px;right:14px;
+    width:64px;height:64px;border-radius:50%;
+    border:3px solid var(--margin);color:var(--margin);
+    display:flex;align-items:center;justify-content:center;flex-direction:column;
+    transform:rotate(-11deg);font-family:'Caveat',cursive;font-weight:700;
+    line-height:1;opacity:.92;pointer-events:none;
+  }
+  .stamp .top{font-size:11px;letter-spacing:.5px;text-transform:uppercase;font-family:'Manrope',sans-serif;font-weight:800;}
+  .stamp .score{font-size:19px;margin-top:2px;}
+
+  .empty-state{
+    text-align:center;padding:50px 20px;color:var(--ink-soft);
+  }
+  .empty-state .ic{font-size:38px;display:block;margin-bottom:10px;}
+
+  /* ---------- breadcrumb / back ---------- */
+  .backrow{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+  .backbtn{
+    display:flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #DADFE8;
+    border-radius:10px;padding:8px 14px;font-weight:700;font-size:13.5px;color:var(--ink-soft);
+  }
+  .backbtn:hover{border-color:var(--blue);color:var(--blue);}
+
+  /* ---------- test taking ---------- */
+  .test-panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:28px;border-left:6px solid var(--gold);}
+  .qblock{padding:18px 0;border-bottom:1px solid #EEE7D6;}
+  .qblock:last-of-type{border-bottom:none;}
+  .qnum{font-family:'Caveat',cursive;font-size:20px;color:var(--gold);font-weight:700;}
+  .qtext{font-weight:700;font-size:16px;margin:4px 0 12px;}
+  .opt{
+    display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid #E3E7EE;
+    border-radius:10px;margin-bottom:8px;cursor:pointer;font-size:14.5px;
+  }
+  .opt:hover{border-color:var(--blue);}
+  .opt.selected{border-color:var(--blue);background:var(--blue-soft);font-weight:700;}
+  .opt.correct{border-color:var(--green);background:var(--green-soft);font-weight:700;}
+  .opt.wrong{border-color:var(--danger);background:#FBEAEA;font-weight:700;}
+  .opt input{accent-color:var(--blue);}
+  .result-box{
+    text-align:center;padding:30px 20px;background:var(--gold-soft);border-radius:14px;margin-bottom:20px;
+  }
+  .result-box .big{font-family:'Caveat',cursive;font-size:44px;color:var(--gold);font-weight:700;line-height:1;}
+  .result-box .sub{color:var(--ink-soft);font-weight:600;margin-top:6px;}
+
+  /* ---------- admin ---------- */
+  .admin-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
+  .admin-tab{
+    background:#fff;border:1.5px solid #DADFE8;border-radius:10px;padding:9px 16px;
+    font-weight:700;font-size:13.5px;color:var(--ink-soft);
+  }
+  .admin-tab.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;}
+  .panel h3{margin:0 0 4px;font-size:18px;}
+  .panel .hint{color:var(--ink-soft);font-size:13px;margin:0 0 18px;}
+  .table-wrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{text-align:left;color:var(--ink-soft);font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;
+     padding:8px 10px;border-bottom:2px solid #EEE7D6;}
+  td{padding:10px 10px;border-bottom:1px solid #F1EDE2;vertical-align:top;}
+  tr:hover td{background:#FCFAF3;}
+  .row-actions{display:flex;gap:6px;}
+  .badge{font-size:11px;font-weight:800;padding:3px 8px;border-radius:20px;}
+  .badge-admin{background:var(--gold-soft);color:var(--gold);}
+  .badge-user{background:var(--blue-soft);color:var(--blue);}
+  .badge-on{background:var(--green-soft);color:var(--green);}
+  .badge-off{background:#F1EDE2;color:var(--ink-soft);}
+
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
+  .form-grid.full{grid-template-columns:1fr;}
+  .form-grid .span2{grid-column:1 / -1;}
+  .form-grid label{display:block;font-size:12.5px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;}
+  .form-grid input, .form-grid select, .form-grid textarea{
+    width:100%;padding:10px 12px;border:1.5px solid #DADFE8;border-radius:9px;font-size:14px;font-family:inherit;
+  }
+  .form-grid textarea{resize:vertical;min-height:60px;}
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
+  .divider{height:1px;background:#EEE7D6;margin:22px 0;}
+  .opt-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .opt-row input[type=text]{flex:1;}
+  .qcard{border:1.5px solid #EEE7D6;border-radius:12px;padding:14px 16px;margin-bottom:12px;}
+  .qcard .qhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px;}
+
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    background:var(--ink);color:#fff;padding:12px 20px;border-radius:10px;
+    font-size:13.5px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25);
+    z-index:999;opacity:0;transition:opacity .2s ease, transform .2s ease;pointer-events:none;
+  }
+  .toast.show{opacity:1;}
+
+  @media (max-width:600px){
+    .form-grid{grid-template-columns:1fr;}
+    .app-shell{padding:14px 12px 50px;}
+    .topbar{padding:12px 14px;}
+    .brand .name{font-size:16px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   MaktabHub — sozlamalar
+   ============================================================ */
+const SUPABASE_URL = "https://ghlnxgxcjmtvgscnlanh.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdobG54Z3hjam10dmdzY25sYW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1ODU5NDQsImV4cCI6MjEwMzE2MTk0NH0.68KtiCnfYSm1Kh5ponGUb4lSUeFlvnh4eZbJaKJOw0s";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const CATEGORY_META = {
+  test:      { label: "Attestatsiya testlari", icon: "📝", pillClass: "pill-test" },
+  adabiyot:  { label: "Adabiyotlar",            icon: "📚", pillClass: "pill-link" },
+  mashgulot: { label: "Mashg'ulotlar",           icon: "🧩", pillClass: "pill-link" },
+};
+
+/* ---------- global state (session-only, no storage) ---------- */
+let state = {
+  user: null,           // {code, name, role}
+  view: "login",        // login | home | category | test | admin
+  activeCategory: "test",
+  sections: [],          // all sections
+  progressMap: {},       // section_id -> {score,total}
+  currentSection: null,
+  questions: [],
+  answers: {},           // qid -> selected option index
+  submitted: false,
+  lastResult: null,
+  adminTab: "sections",  // sections | questions | codes
+  adminCodes: [],
+  adminQFor: null,       // section id being edited in "questions" admin tab
+  adminQuestions: [],
+  loading: false,
+  loginError: "",
+};
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(()=>t.classList.remove('show'), 2400);
+}
+
+function esc(s){
+  return (s ?? "").toString().replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+/* ============================================================
+   DATA LAYER
+   ============================================================ */
+async function fetchSections(){
+  const { data, error } = await sb.from('mh_sections').select('*').order('category').order('sort_order');
+  if(error){ console.error(error); toast('Bo\'limlarni yuklashda xatolik'); return []; }
+  return data || [];
+}
+
+async function fetchProgress(code){
+  const { data, error } = await sb.from('mh_progress').select('*').eq('code', code);
+  if(error){ console.error(error); return {}; }
+  const map = {};
+  (data||[]).forEach(r => map[r.section_id] = { score:r.score, total:r.total });
+  return map;
+}
+
+async function fetchQuestions(sectionId){
+  const { data, error } = await sb.from('mh_questions').select('*').eq('section_id', sectionId).order('sort_order');
+  if(error){ console.error(error); toast('Savollarni yuklashda xatolik'); return []; }
+  return data || [];
+}
+
+async function fetchAllCodes(){
+  const { data, error } = await sb.from('mh_access_codes').select('*').order('created_at', {ascending:false});
+  if(error){ console.error(error); return []; }
+  return data || [];
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const root = document.getElementById('root');
+
+function render(){
+  if(state.view === 'login'){ root.innerHTML = renderLogin(); attachLoginHandlers(); return; }
+  let inner = '';
+  if(state.view === 'home') inner = renderHome();
+  else if(state.view === 'category') inner = renderCategory();
+  else if(state.view === 'test') inner = renderTest();
+  else if(state.view === 'admin') inner = renderAdmin();
+
+  root.innerHTML = `
+    <div class="app-shell">
+      ${renderTopbar()}
+      ${inner}
+    </div>
+  `;
+  attachGlobalHandlers();
+}
+
+function renderTopbar(){
+  return `
+    <div class="topbar">
+      <div class="brand">
+        <div class="mark">MH</div>
+        <div class="name">Maktab<span>Hub</span></div>
+      </div>
+      <div class="topbar-right">
+        <span class="userchip"><b>${esc(state.user.name)}</b>${state.user.role==='admin' ? ' · admin' : ''}</span>
+        ${state.user.role==='admin' ? `<button class="btn btn-ghost btn-sm" data-act="goto-admin">⚙️ Admin panel</button>` : ''}
+        ${state.view!=='home' ? `<button class="btn btn-ghost btn-sm" data-act="goto-home">🏠 Bosh sahifa</button>` : ''}
+        <button class="btn btn-danger btn-sm" data-act="logout">Chiqish</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderLogin(){
+  return `
+    <div class="login-wrap">
+      <div class="login-card">
+        <div class="mark">MH</div>
+        <h1>MaktabHub</h1>
+        <p class="sub">Boshlang'ich ta'lim ustozlari uchun attestatsiya testlari, adabiyotlar va mashg'ulotlar platformasi.</p>
+        ${state.loginError ? `<div class="error-msg">${esc(state.loginError)}</div>` : ''}
+        <div class="field">
+          <label>Kirish kodi</label>
+          <input id="login-code" type="text" placeholder="Masalan: ADMIN2026" autocomplete="off" />
+        </div>
+        <button class="btn btn-primary" id="login-btn" ${state.loading?'disabled':''}>${state.loading?'Tekshirilmoqda...':'Kirish'}</button>
+        <p class="login-note">Kirish kodi administrator tomonidan beriladi. Ochiq ro'yxatdan o'tish mavjud emas — kodingiz yo'q bo'lsa, muassasangiz administratoriga murojaat qiling.</p>
+      </div>
+    </div>
+  `;
+}
+
+function attachLoginHandlers(){
+  const btn = document.getElementById('login-btn');
+  const input = document.getElementById('login-code');
+  input.focus();
+  const submit = async () => {
+    const code = input.value.trim();
+    if(!code){ return; }
+    state.loading = true; state.loginError=''; render();
+    const { data, error } = await sb.from('mh_access_codes').select('*').eq('code', code).eq('active', true).maybeSingle();
+    state.loading = false;
+    if(error || !data){
+      state.loginError = "Kod topilmadi yoki faol emas. Qaytadan urinib ko'ring.";
+      render();
+      return;
+    }
+    state.user = { code: data.code, name: data.name, role: data.role };
+    state.sections = await fetchSections();
+    state.progressMap = await fetchProgress(data.code);
+    state.view = 'home';
+    render();
+  };
+  btn.addEventListener('click', submit);
+  input.addEventListener('keydown', e => { if(e.key==='Enter') submit(); });
+}
+
+function renderHome(){
+  const cats = ['test','adabiyot','mashgulot'];
+  const tabs = cats.map(c => {
+    const meta = CATEGORY_META[c];
+    const count = state.sections.filter(s=>s.category===c).length;
+    return `<button class="tab ${state.activeCategory===c?'active':''}" data-act="set-cat" data-cat="${c}">
+      <span class="ic">${meta.icon}</span> ${meta.label} <span class="cnt">${count}</span>
+    </button>`;
+  }).join('');
+
+  const items = state.sections.filter(s=>s.category===state.activeCategory);
+  let grid;
+  if(items.length===0){
+    grid = `<div class="empty-state"><span class="ic">🗂️</span>Bu bo'limda hali kartochka yo'q.</div>`;
+  } else {
+    grid = `<div class="grid">${items.map(s=>renderSectionCard(s)).join('')}</div>`;
+  }
+
+  return `
+    <div class="hero">
+      <span class="eyebrow hand">Xush kelibsiz,</span>
+      <h2>${esc(state.user.name)}</h2>
+      <p>Kerakli bo'limni tanlang — testlar, adabiyotlar va mashg'ulotlar bir joyda.</p>
+    </div>
+    <div class="tabs">${tabs}</div>
+    ${grid}
+  `;
+}
+
+function renderSectionCard(s){
+  const meta = CATEGORY_META[s.category];
+  const prog = state.progressMap[s.id];
+  let stamp = '';
+  if(s.category==='test' && prog){
+    stamp = `<div class="stamp"><div class="top">Bajarildi</div><div class="score">${prog.score}/${prog.total}</div></div>`;
+  }
+  let footPill;
+  let clickable = true;
+  if(s.category==='test'){
+    footPill = `<span class="pill ${meta.pillClass}">${prog ? 'Qayta topshirish' : 'Testni boshlash'}</span>`;
+  } else {
+    if(s.external_url){
+      footPill = `<span class="pill pill-link">Havolani ochish ↗</span>`;
+    } else {
+      footPill = `<span class="pill pill-soon">Tez orada</span>`;
+      clickable = false;
+    }
+  }
+  return `
+    <div class="card ${clickable?'clickable':''}" data-act="open-section" data-id="${s.id}">
+      ${stamp}
+      <div class="ic">${esc(s.icon||meta.icon)}</div>
+      <h3>${esc(s.title)}</h3>
+      <p>${esc(s.description||'')}</p>
+      <div class="foot">${footPill}</div>
+    </div>
+  `;
+}
+
+function renderCategory(){
+  // (kept for potential future breakdown; currently home() already lists per category)
+  return renderHome();
+}
+
+async function openSection(id){
+  const s = state.sections.find(x=>x.id===id);
+  if(!s) return;
+  if(s.category!=='test'){
+    if(s.external_url){ window.open(s.external_url, '_blank', 'noopener'); }
+    return;
+  }
+  state.loading = true; render();
+  state.currentSection = s;
+  state.questions = await fetchQuestions(s.id);
+  state.answers = {};
+  state.submitted = false;
+  state.lastResult = null;
+  state.loading = false;
+  state.view = 'test';
+  render();
+}
+
+function renderTest(){
+  const s = state.currentSection;
+  if(!s) return `<div class="empty-state">Bo'lim topilmadi.</div>`;
+  if(state.questions.length===0){
+    return `
+      <div class="backrow"><button class="backbtn" data-act="goto-home">← Bosh sahifaga</button></div>
+      <div class="empty-state"><span class="ic">📝</span>${esc(s.title)} uchun hali savollar qo'shilmagan.</div>
+    `;
+  }
+
+  let resultHtml = '';
+  if(state.submitted && state.lastResult){
+    const r = state.lastResult;
+    resultHtml = `
+      <div class="result-box">
+        <div class="big hand">${r.score} / ${r.total}</div>
+        <div class="sub">Natijangiz saqlandi</div>
+      </div>
+    `;
+  }
+
+  const qs = state.questions.map((q,i)=>{
+    const opts = q.options.map((opt,oi)=>{
+      let cls='opt';
+      if(state.submitted){
+        if(oi===q.correct_index) cls+=' correct';
+        else if(state.answers[q.id]===oi) cls+=' wrong';
+      } else if(state.answers[q.id]===oi){
+        cls+=' selected';
+      }
+      return `
+        <label class="${cls}" data-act="pick-opt" data-qid="${q.id}" data-oi="${oi}">
+          <input type="radio" name="q_${q.id}" ${state.answers[q.id]===oi?'checked':''} ${state.submitted?'disabled':''}/>
+          <span>${esc(opt)}</span>
+        </label>
+      `;
+    }).join('');
+    return `
+      <div class="qblock">
+        <span class="qnum hand">Savol ${i+1}</span>
+        <div class="qtext">${esc(q.question)}</div>
+        ${opts}
+      </div>
+    `;
+  }).join('');
+
+  const allAnswered = state.questions.every(q => state.answers[q.id] !== undefined);
+
+  return `
+    <div class="backrow"><button class="backbtn" data-act="goto-home">← Bosh sahifaga</button></div>
+    <div class="hero" style="margin-bottom:18px;">
+      <span class="eyebrow hand">Attestatsiya testi</span>
+      <h2>${esc(s.title)}</h2>
+    </div>
+    ${resultHtml}
+    <div class="test-panel">
+      ${qs}
+      ${!state.submitted ? `
+        <button class="btn btn-gold" id="submit-test" ${allAnswered?'':'disabled'}>
+          ${allAnswered ? 'Testni yakunlash' : `Barcha savollarga javob bering (${Object.keys(state.answers).length}/${state.questions.length})`}
+        </button>
+      ` : `<button class="btn btn-primary" data-act="goto-home">Bosh sahifaga qaytish</button>`}
+    </div>
+  `;
+}
+
+async function submitTest(){
+  const s = state.currentSection;
+  let score = 0;
+  state.questions.forEach(q => { if(state.answers[q.id]===q.correct_index) score++; });
+  const total = state.questions.length;
+  state.submitted = true;
+  state.lastResult = { score, total };
+  state.progressMap[s.id] = { score, total };
+  render();
+  const { error } = await sb.from('mh_progress').upsert({
+    code: state.user.code, section_id: s.id, score, total, updated_at: new Date().toISOString()
+  }, { onConflict: 'code,section_id' });
+  if(error){ console.error(error); toast('Natijani saqlashda xatolik yuz berdi'); }
+}
+
+/* ============================================================
+   ADMIN
+   ============================================================ */
+function renderAdmin(){
+  const tabs = [
+    {k:'sections', label:"Bo'limlar"},
+    {k:'questions', label:'Savollar'},
+    {k:'codes', label:'Kirish kodlari'},
+  ].map(t=>`<button class="admin-tab ${state.adminTab===t.k?'active':''}" data-act="admin-tab" data-tab="${t.k}">${t.label}</button>`).join('');
+
+  let body = '';
+  if(state.adminTab==='sections') body = renderAdminSections();
+  else if(state.adminTab==='questions') body = renderAdminQuestions();
+  else if(state.adminTab==='codes') body = renderAdminCodes();
+
+  return `
+    <div class="hero">
+      <span class="eyebrow hand">Boshqaruv</span>
+      <h2>Admin panel</h2>
+      <p>Bo'limlar, testlar va kirish kodlarini shu yerdan boshqaring.</p>
+    </div>
+    <div class="admin-tabs">${tabs}</div>
+    ${body}
+  `;
+}
+
+function renderAdminSections(){
+  const rows = state.sections.map(s=>`
+    <tr>
+      <td>${CATEGORY_META[s.category].icon} ${CATEGORY_META[s.category].label}</td>
+      <td><b>${esc(s.title)}</b><br><span style="color:var(--ink-soft);font-size:12px;">${esc(s.description||'')}</span></td>
+      <td>${s.external_url ? `<a href="${esc(s.external_url)}" target="_blank" rel="noopener">${esc(s.external_url)}</a>` : '<span style="color:var(--ink-soft);">—</span>'}</td>
+      <td>${s.sort_order ?? 0}</td>
+      <td>
+        <div class="row-actions">
+          <button class="btn btn-ghost btn-sm" data-act="edit-section" data-id="${s.id}">Tahrirlash</button>
+          <button class="btn btn-danger btn-sm" data-act="delete-section" data-id="${s.id}">O'chirish</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+
+  return `
+    <div class="panel">
+      <div class="toolbar">
+        <div><h3>Bo'limlar</h3><p class="hint" style="margin:0;">Har uchala toifa uchun kartochkalarni shu yerda yarating.</p></div>
+        <button class="btn btn-primary btn-sm" data-act="new-section">+ Yangi bo'lim</button>
+      </div>
+      <div id="section-form-slot"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Toifa</th><th>Sarlavha</th><th>Havola</th><th>Tartib</th><th></th></tr></thead>
+          <tbody>${rows || `<tr><td colspan="5" style="color:var(--ink-soft);padding:20px 10px;">Hali bo'lim yo'q.</td></tr>`}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function sectionForm(existing){
+  const s = existing || {category:'test', title:'', description:'', icon:'', external_url:'', sort_order:0};
+  return `
+    <div class="panel" style="background:#FCFAF3;margin-bottom:18px;">
+      <h3 style="margin-bottom:14px;">${existing? "Bo'limni tahrirlash" : "Yangi bo'lim"}</h3>
+      <div class="form-grid">
+        <div>
+          <label>Toifa</label>
+          <select id="f-category">
+            <option value="test" ${s.category==='test'?'selected':''}>📝 Attestatsiya testlari</option>
+            <option value="adabiyot" ${s.category==='adabiyot'?'selected':''}>📚 Adabiyotlar</option>
+            <option value="mashgulot" ${s.category==='mashgulot'?'selected':''}>🧩 Mashg'ulotlar</option>
+          </select>
+        </div>
+        <div>
+          <label>Ikonka (emoji, ixtiyoriy)</label>
+          <input id="f-icon" type="text" value="${esc(s.icon||'')}" placeholder="📌" />
+        </div>
+        <div class="span2">
+          <label>Sarlavha</label>
+          <input id="f-title" type="text" value="${esc(s.title)}" placeholder="Masalan: Ona tili — 1-bo'lim" />
+        </div>
+        <div class="span2">
+          <label>Tavsif</label>
+          <textarea id="f-desc" placeholder="Qisqa tavsif">${esc(s.description||'')}</textarea>
+        </div>
+        <div class="span2">
+          <label>Tashqi havola (Adabiyot/Mashg'ulot uchun — hozircha bo'sh qoldirish mumkin)</label>
+          <input id="f-url" type="text" value="${esc(s.external_url||'')}" placeholder="https://..." />
+        </div>
+        <div>
+          <label>Tartib raqami</label>
+          <input id="f-sort" type="number" value="${s.sort_order ?? 0}" />
+        </div>
+      </div>
+      <div class="row-actions">
+        <button class="btn btn-primary" id="save-section">Saqlash</button>
+        <button class="btn btn-ghost" id="cancel-section">Bekor qilish</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderAdminQuestions(){
+  const testSections = state.sections.filter(s=>s.category==='test');
+  const options = testSections.map(s=>`<option value="${s.id}" ${state.adminQFor===s.id?'selected':''}>${esc(s.title)}</option>`).join('');
+
+  let body = '';
+  if(!state.adminQFor && testSections.length){
+    body = `<p class="hint">Savollarni ko'rish/qo'shish uchun test to'plamini tanlang.</p>`;
+  } else if(!testSections.length){
+    body = `<div class="empty-state"><span class="ic">📝</span>Avval "Bo'limlar" bo'limida bitta test to'plami yarating.</div>`;
+  } else {
+    const qs = state.adminQuestions.map((q,i)=>`
+      <div class="qcard">
+        <div class="qhead">
+          <div><b>${i+1}. ${esc(q.question)}</b></div>
+          <div class="row-actions">
+            <button class="btn btn-ghost btn-sm" data-act="edit-question" data-id="${q.id}">Tahrirlash</button>
+            <button class="btn btn-danger btn-sm" data-act="delete-question" data-id="${q.id}">O'chirish</button>
+          </div>
+        </div>
+        <div style="font-size:13px;color:var(--ink-soft);">
+          ${q.options.map((o,oi)=>`${oi===q.correct_index?'✅':'▫️'} ${esc(o)}`).join('&nbsp;&nbsp;')}
+        </div>
+      </div>
+    `).join('');
+    body = `
+      <div id="question-form-slot"></div>
+      ${qs || `<p class="hint">Bu to'plamda hali savol yo'q.</p>`}
+    `;
+  }
+
+  return `
+    <div class="panel">
+      <div class="toolbar">
+        <div>
+          <h3>Savollar</h3>
+          <p class="hint" style="margin:0;">Test to'plamini tanlab, savollarni boshqaring.</p>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <select id="qf-select" ${!testSections.length?'disabled':''}>
+            <option value="">— to'plam tanlang —</option>
+            ${options}
+          </select>
+          ${state.adminQFor ? `<button class="btn btn-primary btn-sm" data-act="new-question">+ Savol qo'shish</button>` : ''}
+        </div>
+      </div>
+      ${body}
+    </div>
+  `;
+}
+
+function questionForm(existing){
+  const q = existing || {question:'', options:['','','',''], correct_index:0, sort_order: state.adminQuestions.length};
+  const optsHtml = [0,1,2,3].map(i=>`
+    <div class="opt-row">
+      <input type="radio" name="f-correct" value="${i}" ${q.correct_index===i?'checked':''} title="To'g'ri javob"/>
+      <input type="text" id="f-opt-${i}" value="${esc(q.options[i]||'')}" placeholder="Variant ${i+1}"/>
+    </div>
+  `).join('');
+  return `
+    <div class="panel" style="background:#FCFAF3;margin-bottom:16px;">
+      <h3 style="margin-bottom:14px;">${existing?'Savolni tahrirlash':"Yangi savol"}</h3>
+      <div class="form-grid full">
+        <div>
+          <label>Savol matni</label>
+          <textarea id="f-question">${esc(q.question)}</textarea>
+        </div>
+        <div>
+          <label>Variantlar (to'g'ri javobni belgilang)</label>
+          ${optsHtml}
+        </div>
+        <div style="max-width:160px;">
+          <label>Tartib raqami</label>
+          <input id="f-qsort" type="number" value="${q.sort_order ?? 0}" />
+        </div>
+      </div>
+      <div class="row-actions">
+        <button class="btn btn-primary" id="save-question">Saqlash</button>
+        <button class="btn btn-ghost" id="cancel-question">Bekor qilish</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderAdminCodes(){
+  const rows = state.adminCodes.map(c=>`
+    <tr>
+      <td><b>${esc(c.code)}</b></td>
+      <td>${esc(c.name)}</td>
+      <td><span class="badge ${c.role==='admin'?'badge-admin':'badge-user'}">${c.role==='admin'?'Admin':'Foydalanuvchi'}</span></td>
+      <td><span class="badge ${c.active?'badge-on':'badge-off'}">${c.active?'Faol':"O'chirilgan"}</span></td>
+      <td>
+        <div class="row-actions">
+          <button class="btn btn-ghost btn-sm" data-act="edit-code" data-code="${esc(c.code)}">Tahrirlash</button>
+          <button class="btn btn-ghost btn-sm" data-act="toggle-code" data-code="${esc(c.code)}" data-active="${c.active}">${c.active?"O'chirish":'Faollashtirish'}</button>
+          <button class="btn btn-danger btn-sm" data-act="delete-code" data-code="${esc(c.code)}">Butunlay o'chirish</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+
+  return `
+    <div class="panel">
+      <div class="toolbar">
+        <div><h3>Kirish kodlari</h3><p class="hint" style="margin:0;">Har bir ustoz/foydalanuvchi uchun alohida kod yarating.</p></div>
+        <button class="btn btn-primary btn-sm" data-act="new-code">+ Yangi kod</button>
+      </div>
+      <div id="code-form-slot"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Kod</th><th>Ism</th><th>Rol</th><th>Holat</th><th></th></tr></thead>
+          <tbody>${rows || `<tr><td colspan="5" style="color:var(--ink-soft);padding:20px 10px;">Hali kod yo'q.</td></tr>`}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function codeForm(existing){
+  const c = existing || {code:'', name:'', role:'user', active:true};
+  return `
+    <div class="panel" style="background:#FCFAF3;margin-bottom:18px;">
+      <h3 style="margin-bottom:14px;">${existing?'Kodni tahrirlash':'Yangi kirish kodi'}</h3>
+      <div class="form-grid">
+        <div>
+          <label>Kod</label>
+          <input id="f-code" type="text" value="${esc(c.code)}" ${existing?'disabled':''} placeholder="Masalan: USTOZ2026" />
+        </div>
+        <div>
+          <label>Ism-familiya</label>
+          <input id="f-name" type="text" value="${esc(c.name)}" placeholder="F.I.Sh." />
+        </div>
+        <div>
+          <label>Rol</label>
+          <select id="f-role">
+            <option value="user" ${c.role==='user'?'selected':''}>Foydalanuvchi</option>
+            <option value="admin" ${c.role==='admin'?'selected':''}>Admin</option>
+          </select>
+        </div>
+        <div>
+          <label>Holat</label>
+          <select id="f-active">
+            <option value="true" ${c.active?'selected':''}>Faol</option>
+            <option value="false" ${!c.active?'selected':''}>O'chirilgan</option>
+          </select>
+        </div>
+      </div>
+      <div class="row-actions">
+        <button class="btn btn-primary" id="save-code">Saqlash</button>
+        <button class="btn btn-ghost" id="cancel-code">Bekor qilish</button>
+      </div>
+    </div>
+  `;
+}
+
+/* ============================================================
+   EVENT HANDLING (delegated)
+   ============================================================ */
+function attachGlobalHandlers(){
+  root.querySelectorAll('[data-act]').forEach(el=>{
+    el.addEventListener('click', onAction);
+  });
+  // extra: selects that need change listeners
+  const qfSelect = document.getElementById('qf-select');
+  if(qfSelect){
+    qfSelect.addEventListener('change', async (e)=>{
+      state.adminQFor = e.target.value || null;
+      state.adminQuestions = state.adminQFor ? await fetchQuestions(state.adminQFor) : [];
+      render();
+    });
+  }
+  const submitBtn = document.getElementById('submit-test');
+  if(submitBtn){ submitBtn.addEventListener('click', submitTest); }
+
+  // section form triggers already handled by data-act; wire save/cancel if slot has one
+  wireSectionForm();
+  wireQuestionForm();
+  wireCodeForm();
+}
+
+function wireSectionForm(){
+  const saveBtn = document.getElementById('save-section');
+  if(!saveBtn) return;
+  document.getElementById('cancel-section').addEventListener('click', ()=>{
+    document.getElementById('section-form-slot').innerHTML = '';
+  });
+  saveBtn.addEventListener('click', async ()=>{
+    const payload = {
+      category: document.getElementById('f-category').value,
+      title: document.getElementById('f-title').value.trim(),
+      description: document.getElementById('f-desc').value.trim(),
+      icon: document.getElementById('f-icon').value.trim(),
+      external_url: document.getElementById('f-url').value.trim() || null,
+      sort_order: parseInt(document.getElementById('f-sort').value)||0,
+    };
+    if(!payload.title){ toast("Sarlavha kiritilishi shart"); return; }
+    const editingId = saveBtn.dataset.editId;
+    let error;
+    if(editingId){
+      ({error} = await sb.from('mh_sections').update(payload).eq('id', editingId));
+    } else {
+      ({error} = await sb.from('mh_sections').insert(payload));
+    }
+    if(error){ console.error(error); toast('Saqlashda xatolik'); return; }
+    toast('Saqlandi');
+    state.sections = await fetchSections();
+    document.getElementById('section-form-slot').innerHTML = '';
+    render();
+  });
+}
+
+function wireQuestionForm(){
+  const saveBtn = document.getElementById('save-question');
+  if(!saveBtn) return;
+  document.getElementById('cancel-question').addEventListener('click', ()=>{
+    document.getElementById('question-form-slot').innerHTML = '';
+  });
+  saveBtn.addEventListener('click', async ()=>{
+    const options = [0,1,2,3].map(i=>document.getElementById(`f-opt-${i}`).value.trim());
+    if(options.some(o=>!o)){ toast("Barcha 4 ta variant to'ldirilishi kerak"); return; }
+    const correctEl = document.querySelector('input[name="f-correct"]:checked');
+    const payload = {
+      section_id: state.adminQFor,
+      question: document.getElementById('f-question').value.trim(),
+      options: options,
+      correct_index: correctEl ? parseInt(correctEl.value) : 0,
+      sort_order: parseInt(document.getElementById('f-qsort').value)||0,
+    };
+    if(!payload.question){ toast('Savol matni kiritilishi shart'); return; }
+    const editingId = saveBtn.dataset.editId;
+    let error;
+    if(editingId){
+      ({error} = await sb.from('mh_questions').update(payload).eq('id', editingId));
+    } else {
+      ({error} = await sb.from('mh_questions').insert(payload));
+    }
+    if(error){ console.error(error); toast('Saqlashda xatolik'); return; }
+    toast('Savol saqlandi');
+    state.adminQuestions = await fetchQuestions(state.adminQFor);
+    document.getElementById('question-form-slot').innerHTML = '';
+    render();
+  });
+}
+
+function wireCodeForm(){
+  const saveBtn = document.getElementById('save-code');
+  if(!saveBtn) return;
+  document.getElementById('cancel-code').addEventListener('click', ()=>{
+    document.getElementById('code-form-slot').innerHTML = '';
+  });
+  saveBtn.addEventListener('click', async ()=>{
+    const payload = {
+      code: document.getElementById('f-code').value.trim(),
+      name: document.getElementById('f-name').value.trim(),
+      role: document.getElementById('f-role').value,
+      active: document.getElementById('f-active').value === 'true',
+    };
+    if(!payload.code || !payload.name){ toast('Kod va ism kiritilishi shart'); return; }
+    const isEdit = saveBtn.dataset.editing === 'true';
+    let error;
+    if(isEdit){
+      ({error} = await sb.from('mh_access_codes').update({
+        name: payload.name, role: payload.role, active: payload.active
+      }).eq('code', payload.code));
+    } else {
+      ({error} = await sb.from('mh_access_codes').insert(payload));
+    }
+    if(error){ console.error(error); toast(error.message?.includes('duplicate') ? 'Bu kod allaqachon mavjud' : 'Saqlashda xatolik'); return; }
+    toast('Saqlandi');
+    state.adminCodes = await fetchAllCodes();
+    document.getElementById('code-form-slot').innerHTML = '';
+    render();
+  });
+}
+
+async function onAction(e){
+  const el = e.currentTarget;
+  const act = el.dataset.act;
+
+  if(act==='logout'){ state.user=null; state.view='login'; state.loginError=''; render(); return; }
+  if(act==='goto-home'){ state.view='home'; render(); return; }
+  if(act==='goto-admin'){
+    state.view='admin'; state.adminTab='sections';
+    state.adminCodes = await fetchAllCodes();
+    render();
+    return;
+  }
+  if(act==='set-cat'){ state.activeCategory = el.dataset.cat; render(); return; }
+  if(act==='open-section'){ openSection(el.dataset.id); return; }
+
+  if(act==='pick-opt'){
+    if(state.submitted) return;
+    state.answers[el.dataset.qid] = parseInt(el.dataset.oi);
+    render();
+    return;
+  }
+
+  // ---- admin: tabs ----
+  if(act==='admin-tab'){
+    state.adminTab = el.dataset.tab;
+    if(state.adminTab==='codes') state.adminCodes = await fetchAllCodes();
+    render();
+    return;
+  }
+
+  // ---- admin: sections ----
+  if(act==='new-section'){
+    document.getElementById('section-form-slot').innerHTML = sectionForm(null);
+    wireSectionForm();
+    return;
+  }
+  if(act==='edit-section'){
+    const s = state.sections.find(x=>x.id===el.dataset.id);
+    document.getElementById('section-form-slot').innerHTML = sectionForm(s);
+    wireSectionForm();
+    document.getElementById('save-section').dataset.editId = s.id;
+    return;
+  }
+  if(act==='delete-section'){
+    if(!confirm("Ushbu bo'limni o'chirmoqchimisiz? Unga tegishli savollar ham o'chib ketadi.")) return;
+    const { error } = await sb.from('mh_sections').delete().eq('id', el.dataset.id);
+    if(error){ toast('O\'chirishda xatolik'); return; }
+    state.sections = await fetchSections();
+    toast("Bo'lim o'chirildi");
+    render();
+    return;
+  }
+
+  // ---- admin: questions ----
+  if(act==='new-question'){
+    document.getElementById('question-form-slot').innerHTML = questionForm(null);
+    wireQuestionForm();
+    return;
+  }
+  if(act==='edit-question'){
+    const q = state.adminQuestions.find(x=>x.id===el.dataset.id);
+    document.getElementById('question-form-slot').innerHTML = questionForm(q);
+    wireQuestionForm();
+    document.getElementById('save-question').dataset.editId = q.id;
+    return;
+  }
+  if(act==='delete-question'){
+    if(!confirm('Ushbu savolni o\'chirmoqchimisiz?')) return;
+    const { error } = await sb.from('mh_questions').delete().eq('id', el.dataset.id);
+    if(error){ toast('O\'chirishda xatolik'); return; }
+    state.adminQuestions = await fetchQuestions(state.adminQFor);
+    toast("Savol o'chirildi");
+    render();
+    return;
+  }
+
+  // ---- admin: codes ----
+  if(act==='new-code'){
+    document.getElementById('code-form-slot').innerHTML = codeForm(null);
+    wireCodeForm();
+    return;
+  }
+  if(act==='edit-code'){
+    const c = state.adminCodes.find(x=>x.code===el.dataset.code);
+    document.getElementById('code-form-slot').innerHTML = codeForm(c);
+    wireCodeForm();
+    const saveBtn = document.getElementById('save-code');
+    saveBtn.dataset.editing = 'true';
+    return;
+  }
+  if(act==='toggle-code'){
+    const active = el.dataset.active === 'true';
+    const { error } = await sb.from('mh_access_codes').update({active: !active}).eq('code', el.dataset.code);
+    if(error){ toast('Xatolik'); return; }
+    state.adminCodes = await fetchAllCodes();
+    render();
+    return;
+  }
+  if(act==='delete-code'){
+    if(!confirm("Ushbu kodni butunlay o'chirmoqchimisiz?")) return;
+    const { error } = await sb.from('mh_access_codes').delete().eq('code', el.dataset.code);
+    if(error){ toast('O\'chirishda xatolik'); return; }
+    state.adminCodes = await fetchAllCodes();
+    toast("Kod o'chirildi");
+    render();
+    return;
+  }
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+render();
+</script>
+</body>
+</html>
