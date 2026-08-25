@@ -343,6 +343,7 @@ let state = {
   adminQuestions: [],
   qFormDraft: null,       // {editingId, question, explanation, options:[], correct}
   newSectionInline: false,
+  bulkOpen: false,
   loading: false,
   loginError: "",
 };
@@ -775,6 +776,7 @@ function renderAdminQuestions(){
             ${options}
           </select>
           <button class="btn btn-ghost btn-sm" data-act="toggle-new-bolim">+ Yangi bo'lim</button>
+          <button class="btn btn-gold btn-sm" data-act="toggle-bulk" ${!state.adminQFor?'disabled':''}>⬆ Ko'p yuklash</button>
         </div>
       </div>
       ${state.newSectionInline ? `
@@ -785,11 +787,61 @@ function renderAdminQuestions(){
         </div>
       ` : ''}
     </div>
+    ${bulkUploadPanel()}
     <div class="two-col">
       ${questionFormPanel()}
       ${questionsRecordsPanel()}
     </div>
   `;
+}
+
+function bulkUploadPanel(){
+  if(!state.bulkOpen || !state.adminQFor) return '';
+  const example = "Bu qanday so'z turkumi?\n*Ot\nSifat\nFe'l\nSon\nIzoh: Ot - narsa-buyum nomini bildiradi.\n\nEga va kesim gap bo'laklarimi?\nYo'q\n*Ha\n\nYana bir savol matni?\n*To'g'ri variant\nXato variant 1\nXato variant 2";
+  return `
+    <div class="panel" style="background:#FCFAF3;margin-bottom:18px;border-left:4px solid var(--gold);">
+      <h3 style="margin-bottom:6px;">Bir nechta savolni birdaniga yuklash</h3>
+      <p class="hint">
+        Har bir savolni <b>bo'sh qatordan</b> ajratib yozing. Birinchi qator — savol matni, keyingi qatorlar — variantlar.
+        To'g'ri javob oldiga <b>*</b> belgisini qo'ying. Ixtiyoriy: <b>Izoh:</b> bilan boshlangan qator izoh sifatida saqlanadi.
+      </p>
+      <textarea id="bulk-text" rows="10" style="width:100%;padding:12px 14px;border:1.5px solid #DADFE8;border-radius:9px;font-family:inherit;font-size:13.5px;" placeholder="${esc(example)}"></textarea>
+      <div class="row-actions" style="margin-top:12px;">
+        <button class="btn btn-primary btn-sm" data-act="submit-bulk">Barchasini yuklash</button>
+        <button class="btn btn-ghost btn-sm" data-act="cancel-bulk">Bekor qilish</button>
+      </div>
+    </div>
+  `;
+}
+
+function parseBulkQuestions(text){
+  const blocks = text.split(/\n\s*\n/).map(b=>b.trim()).filter(Boolean);
+  const questions = [];
+  const errors = [];
+  blocks.forEach((block, bi)=>{
+    const lines = block.split('\n').map(l=>l.trim()).filter(Boolean);
+    if(lines.length < 3){ errors.push(`${bi+1}-blok: savol va kamida 2 ta variant kerak`); return; }
+    const question = lines[0].replace(/^savol\s*[:.]?\s*/i,'').trim();
+    let explanation = '';
+    const options = [];
+    let correctIndex = -1;
+    for(let i=1;i<lines.length;i++){
+      let line = lines[i];
+      if(/^izoh\s*[:.]/i.test(line)){ explanation = line.replace(/^izoh\s*[:.]?\s*/i,'').trim(); continue; }
+      let isCorrect = false;
+      if(line.startsWith('*')){ isCorrect = true; line = line.slice(1).trim(); }
+      else if(line.endsWith('*')){ isCorrect = true; line = line.slice(0,-1).trim(); }
+      line = line.replace(/^[A-Da-d][\)\.\-]\s*/, '').trim();
+      if(!line) continue;
+      if(isCorrect) correctIndex = options.length;
+      options.push(line);
+    }
+    if(!question){ errors.push(`${bi+1}-blok: savol matni topilmadi`); return; }
+    if(options.length < 2){ errors.push(`${bi+1}-blok ("${question.slice(0,30)}"): kamida 2 ta variant kerak`); return; }
+    if(correctIndex === -1){ errors.push(`${bi+1}-blok ("${question.slice(0,30)}"): to'g'ri javob (* bilan) belgilanmagan`); return; }
+    questions.push({ question, options, correct_index: correctIndex, explanation: explanation || null });
+  });
+  return { questions, errors };
 }
 
 function blankDraft(){
@@ -950,6 +1002,7 @@ function attachGlobalHandlers(){
     qfSelect.addEventListener('change', async (e)=>{
       state.adminQFor = e.target.value || null;
       state.newSectionInline = false;
+      state.bulkOpen = false;
       if(state.adminQFor){
         state.adminQuestions = await fetchQuestions(state.adminQFor);
         state.qFormDraft = blankDraft();
@@ -1103,6 +1156,42 @@ async function onAction(e){
   // ---- admin: questions (new dynamic form) ----
   if(act==='toggle-new-bolim'){
     state.newSectionInline = !state.newSectionInline;
+    render();
+    return;
+  }
+  if(act==='toggle-bulk'){
+    if(!state.adminQFor) return;
+    state.bulkOpen = !state.bulkOpen;
+    render();
+    return;
+  }
+  if(act==='cancel-bulk'){
+    state.bulkOpen = false;
+    render();
+    return;
+  }
+  if(act==='submit-bulk'){
+    const text = document.getElementById('bulk-text').value;
+    if(!text.trim()){ toast("Matn kiritilmagan"); return; }
+    const { questions, errors } = parseBulkQuestions(text);
+    if(errors.length){
+      alert("Quyidagi bloklarda xatolik topildi, ular yuklanmaydi:\n\n" + errors.join('\n'));
+    }
+    if(!questions.length){ return; }
+    const baseSort = state.adminQuestions.length;
+    const payload = questions.map((q,i)=>({
+      section_id: state.adminQFor,
+      question: q.question,
+      options: q.options,
+      correct_index: q.correct_index,
+      explanation: q.explanation,
+      sort_order: baseSort + i,
+    }));
+    const { error } = await sb.from('mh_questions').insert(payload);
+    if(error){ console.error(error); toast('Yuklashda xatolik yuz berdi'); return; }
+    toast(`${questions.length} ta savol yuklandi`);
+    state.adminQuestions = await fetchQuestions(state.adminQFor);
+    state.bulkOpen = false;
     render();
     return;
   }
