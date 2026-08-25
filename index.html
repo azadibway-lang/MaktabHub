@@ -797,24 +797,109 @@ function renderAdminQuestions(){
 
 function bulkUploadPanel(){
   if(!state.bulkOpen || !state.adminQFor) return '';
-  const example = "Bu qanday so'z turkumi?\n*Ot\nSifat\nFe'l\nSon\nIzoh: Ot - narsa-buyum nomini bildiradi.\n\nEga va kesim gap bo'laklarimi?\nYo'q\n*Ha\n\nYana bir savol matni?\n*To'g'ri variant\nXato variant 1\nXato variant 2";
+  const sectionTitle = (state.sections.find(s=>s.id===state.adminQFor)||{}).title || '';
+  const example = '[\n  { "q": "Savol?", "opts": ["A","B","C","D"], "ans": 2, "exp": "Izoh" },\n  { "q": "Ikkinchi savol?", "opts": ["1","2","3"], "ans": 0 }\n]';
   return `
     <div class="panel" style="background:#FCFAF3;margin-bottom:18px;border-left:4px solid var(--gold);">
-      <h3 style="margin-bottom:6px;">Bir nechta savolni birdaniga yuklash</h3>
-      <p class="hint">
-        Har bir savolni <b>bo'sh qatordan</b> ajratib yozing. Birinchi qator — savol matni, keyingi qatorlar — variantlar.
-        To'g'ri javob oldiga <b>*</b> belgisini qo'ying. Ixtiyoriy: <b>Izoh:</b> bilan boshlangan qator izoh sifatida saqlanadi.
-      </p>
-      <textarea id="bulk-text" rows="10" style="width:100%;padding:12px 14px;border:1.5px solid #DADFE8;border-radius:9px;font-family:inherit;font-size:13.5px;" placeholder="${esc(example)}"></textarea>
-      <div class="row-actions" style="margin-top:12px;">
-        <button class="btn btn-primary btn-sm" data-act="submit-bulk">Barchasini yuklash</button>
+      <h3 style="margin-bottom:2px;">Ko'p savol/yozuv yuklash</h3>
+      <p class="hint" style="margin:0 0 14px;">Bo'lim: <b>${esc(sectionTitle)}</b>. Ro'yxatni pastga joylang \u2014 bir marta bosib hammasi bazaga tushadi.</p>
+
+      <label style="display:block;font-size:12.5px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;">Ro'yxat (JSON format)</label>
+      <textarea id="bulk-text" rows="9" style="width:100%;padding:12px 14px;border:1.5px solid #DADFE8;border-radius:9px;font-family:monospace;font-size:13px;" placeholder="${esc(example)}"></textarea>
+      <p class="hint" style="margin:8px 0 14px;">Har element: <code>q</code>, <code>opts</code>, <code>ans</code> (va ixtiyoriy <code>exp</code>). JSON o'rniga oddiy matn ham mumkin \u2014 to'g'ri javob oldiga <b>*</b> qo'ying, savollarni bo'sh qatordan ajrating.</p>
+
+      <input type="file" id="bulk-file" accept=".json,.txt,.pdf" style="display:none;">
+      <button type="button" class="btn btn-ghost btn-sm" id="bulk-file-btn">📄 Fayldan (.json / .txt / .pdf)</button>
+      <span id="bulk-file-status" style="font-size:12.5px;color:var(--ink-soft);margin-left:8px;"></span>
+
+      <div class="row-actions" style="margin-top:16px;">
+        <button class="btn btn-primary btn-sm" data-act="submit-bulk">💾 Hammasini yuklash</button>
         <button class="btn btn-ghost btn-sm" data-act="cancel-bulk">Bekor qilish</button>
       </div>
     </div>
   `;
 }
 
-function parseBulkQuestions(text){
+function wireBulkPanel(){
+  const btn = document.getElementById('bulk-file-btn');
+  const fileInput = document.getElementById('bulk-file');
+  if(!btn || !fileInput) return;
+  btn.addEventListener('click', ()=> fileInput.click());
+  fileInput.addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const textarea = document.getElementById('bulk-text');
+    const status = document.getElementById('bulk-file-status');
+    if(/\.pdf$/i.test(file.name)){
+      status.textContent = "PDF o'qilmoqda...";
+      try{
+        const text = await extractPdfText(file);
+        textarea.value = text.trim();
+        status.textContent = `"${file.name}" dan matn chiqarildi \u2014 formatni tekshiring`;
+      }catch(err){
+        console.error(err);
+        status.textContent = "PDF o'qishda xatolik yuz berdi";
+        toast("PDF o'qishda xatolik yuz berdi");
+      }
+    } else {
+      textarea.value = await file.text();
+      status.textContent = `"${file.name}" yuklandi`;
+    }
+  });
+}
+
+function loadPdfJsOnce(){
+  return new Promise((resolve, reject)=>{
+    if(window.pdfjsLib){ resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload = ()=>{
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      resolve();
+    };
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+async function extractPdfText(file){
+  await loadPdfJsOnce();
+  const buf = await file.arrayBuffer();
+  const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
+  let text = '';
+  for(let i=1; i<=pdf.numPages; i++){
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map(it=>it.str).join(' ') + '\n\n';
+  }
+  return text;
+}
+
+function tryParseBulk(text){
+  text = text.trim();
+  try{
+    const data = JSON.parse(text);
+    if(Array.isArray(data)){
+      const questions = [];
+      const errors = [];
+      data.forEach((item, i)=>{
+        if(!item || typeof item.q !== 'string' || !item.q.trim() || !Array.isArray(item.opts) || item.opts.length < 2 || typeof item.ans !== 'number'){
+          errors.push(`${i+1}-element: "q", "opts" (kamida 2 ta) va "ans" (raqam) bo'lishi shart`);
+          return;
+        }
+        if(item.ans < 0 || item.ans >= item.opts.length){
+          errors.push(`${i+1}-element ("${item.q.slice(0,30)}"): "ans" qiymati variantlar doirasidan tashqarida`);
+          return;
+        }
+        questions.push({ question:item.q.trim(), options:item.opts.map(o=>String(o).trim()), correct_index:item.ans, explanation:item.exp ? String(item.exp).trim() : null });
+      });
+      return { questions, errors };
+    }
+  }catch(e){ /* JSON emas \u2014 matn formatga o'tamiz */ }
+  return parseBulkQuestionsText(text);
+}
+
+function parseBulkQuestionsText(text){
   const blocks = text.split(/\n\s*\n/).map(b=>b.trim()).filter(Boolean);
   const questions = [];
   const errors = [];
@@ -1019,6 +1104,7 @@ function attachGlobalHandlers(){
   // section form triggers already handled by data-act; wire save/cancel if slot has one
   wireSectionForm();
   wireCodeForm();
+  wireBulkPanel();
 }
 
 function wireSectionForm(){
@@ -1173,7 +1259,7 @@ async function onAction(e){
   if(act==='submit-bulk'){
     const text = document.getElementById('bulk-text').value;
     if(!text.trim()){ toast("Matn kiritilmagan"); return; }
-    const { questions, errors } = parseBulkQuestions(text);
+    const { questions, errors } = tryParseBulk(text);
     if(errors.length){
       alert("Quyidagi bloklarda xatolik topildi, ular yuklanmaydi:\n\n" + errors.join('\n'));
     }
